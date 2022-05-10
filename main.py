@@ -16,10 +16,10 @@ def load_data():
     return df
 
 # load the model
-model = pickle.load(open('utils/model.pkl', 'rb'))
+model = pickle.load(open('utils/model_param_trained.pkl', 'rb'))
 # oe = pickle.load(open('utils/oe_scaler.pkl', 'rb'))
 # le = pickle.load(open('utils/le_scaler.pkl', 'rb'))
-ss = pickle.load(open('utils/ss_scaler.pkl', 'rb'))
+ss = pickle.load(open('utils/standardscaler.pkl', 'rb'))
 
 def explorer():
     st.write("モデルとデータの説明")
@@ -89,7 +89,7 @@ def explorer():
 
         if sample_data_button:
             df = load_data()
-            X_test_trans, y_test = sample_data_prep(df)
+            X_test_trans, y_test, colnames = sample_data_prep(df)
 
             sample_prediction_button = st.checkbox('サンプルデータから退職の有無を予測！')
             if sample_prediction_button:
@@ -130,7 +130,7 @@ def explorer():
                 col_list = list(df.columns)
                 col_list.remove('left')
 
-                X_shap = pd.DataFrame(X_test_trans, columns = col_list)
+                X_shap = pd.DataFrame(X_test_trans, columns = colnames)
                 st.write(list(df.columns).remove('left'))
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(X_shap)
@@ -150,8 +150,9 @@ def sample_data_prep(df):
     # df_['sales'] = le.transform(df_['sales'])
     df_ = pd.concat([df_, pd.get_dummies(df_['sales'])], axis = 1).drop(columns = ['sales'])
     X_test, y_test = df_.drop(columns = ['left']), df_['left']
+    colnames = X_test.columns
     X_test_trans = ss.transform(X_test)
-    return X_test_trans, y_test
+    return X_test_trans, y_test, colnames
 
 
 def data_input():
@@ -164,7 +165,7 @@ def data_input():
         time_spend_company = st.select_slider('入社してからの年数', options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         Work_accident = st.radio('事故経験', options = ['あり', 'なし'])
         promotion_last_5years = st.radio('過去５年間の昇進', options = ['あり', 'なし'])
-        sales = st.selectbox('所属部門', options = ('sales', 'accounting', 'hr', 'technical', 'support', 'management',
+        sales = st.selectbox('所属部門', options = ('accounting', 'hr', 'technical', 'support', 'management',
                                                     'IT', 'product_mng', 'marketing', 'RandD'))
         salary = st.selectbox('所得水準', options = ('高', '中', '低'))
 
