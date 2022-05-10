@@ -1,3 +1,4 @@
+from matplotlib.font_manager import FontEntry
 import streamlit as st
 import pandas as pd
 import pickle
@@ -16,8 +17,8 @@ def load_data():
 
 # load the model
 model = pickle.load(open('utils/model.pkl', 'rb'))
-oe = pickle.load(open('utils/oe_scaler.pkl', 'rb'))
-le = pickle.load(open('utils/le_scaler.pkl', 'rb'))
+# oe = pickle.load(open('utils/oe_scaler.pkl', 'rb'))
+# le = pickle.load(open('utils/le_scaler.pkl', 'rb'))
 ss = pickle.load(open('utils/ss_scaler.pkl', 'rb'))
 
 def explorer():
@@ -143,9 +144,11 @@ def explorer():
 def sample_data_prep(df):
     df_ = df.sample(100).reset_index(drop = True)
     st.subheader('ランダムに取得したサンプルデータ\n(100件中5件を表示)')
-    st.table(df_.head())
-    df_['salary'] = oe.transform(df_[['salary']])
-    df_['sales'] = le.transform(df_['sales'])
+    st.dataframe(df_.head())
+    # df_['salary'] = oe.transform(df_[['salary']])
+    df_['salary'] = df_['salary'].replace({'high':0.0,  'low':1.0, 'medium': 2.0})
+    # df_['sales'] = le.transform(df_['sales'])
+    df_ = pd.concat([df_, pd.get_dummies(df_['sales'])], axis = 1).drop(columns = ['sales'])
     X_test, y_test = df_.drop(columns = ['left']), df_['left']
     X_test_trans = ss.transform(X_test)
     return X_test_trans, y_test
@@ -184,17 +187,30 @@ def data_input():
 
         # Encoding salary
         if salary == '高':
-            salary = 'high'
+            salary = 0.0
+            # salary = 'high'
         elif salary == '中':
-            salary = 'medium'
+            salary = 2.0
+            # salary = 'medium'
         else:
-            salary = 'low'
+            salary = 1.0
+            # salary = 'low'
+
+
+        sales_cols = ['IT', 'RandD', 'accounting', 'hr', 'management', 'marketing', 'product_mng', 'support', 'technical']
+        sales_temp_df = pd.DataFrame(columns = sales_cols)
+        sales_temp_df.loc[0, sales] = 1
+        sales_temp_df.fillna(0, inplace = True)
+        
 
         # label encoding
-        sales = le.transform([sales])[0]
+        # sales = le.transform([sales])[0]
+
 
         # ordinal encoding
-        salary = oe.transform(np.array([salary]).reshape(-1, 1))[0][0]
+
+        # salary = oe.transform(np.array([salary]).reshape(-1, 1))[0][0]
+
 
         
         df_pred = pd.DataFrame([
@@ -205,14 +221,15 @@ def data_input():
             int(time_spend_company),
             int(Work_accident),
             int(promotion_last_5years),
-            float(sales),
             float(salary)
         ]).T
         df_pred.columns = [
             'satisfaction_level', 'last_evaluation', 'number_project',
        'average_montly_hours', 'time_spend_company', 'Work_accident',
-       'promotion_last_5years', 'sales', 'salary'
+       'promotion_last_5years', 'salary'
         ]
+
+        df_pred = pd.concat([df_pred, sales_temp_df], axis = 1)
 
         return df_pred
 
